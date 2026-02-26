@@ -5,25 +5,31 @@ pipeline {
 
         stage('Build Backend Image') {
             steps {
-                script {
-                    docker.build("lab6-backend", "./backend")
-                }
+                sh '''
+                docker build -t backend-app backend
+                '''
             }
         }
 
         stage('Run Backend Container') {
             steps {
-                script {
-                    docker.image("lab6-backend").run("-d --name backend-container")
-                }
+                sh '''
+                docker rm -f backend1 backend2 || true
+                docker run -d --name backend1 backend-app
+                docker run -d --name backend2 backend-app
+                '''
             }
         }
 
         stage('Deploy NGINX') {
             steps {
-                script {
-                    docker.image("nginx").run("-d -p 8082:80 --name nginx-container")
-                }
+                sh '''
+                docker rm -f nginx-lb || true
+                docker run -d --name nginx-lb -p 80:80 nginx
+                sleep 2
+                docker cp nginx/default.conf nginx-lb:/etc/nginx/conf.d/default.conf
+                docker exec nginx-lb nginx -s reload
+                '''
             }
         }
     }
